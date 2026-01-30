@@ -2,7 +2,6 @@
 
 import hashlib
 import re
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, TypedDict
@@ -16,7 +15,7 @@ from langgraph.prebuilt import ToolNode
 from patcher.agents.base import BaseAgent, AgentContext
 from patcher.agents.tools import create_code_analysis_tools, create_github_tools
 from patcher.github.models import IssueData, FileChange as GHFileChange, CIResult, CIStatus
-from patcher.llm.schemas import CodeGeneration, FileChange
+from patcher.llm.schemas import CodeGeneration
 from patcher.prompts import (
     format_code_generation_examples,
     format_code_fix_examples,
