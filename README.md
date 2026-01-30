@@ -2,6 +2,8 @@
 
 AI-powered code agent for automated GitHub SDLC (Software Development Life Cycle).
 
+**Install the bot (not hosted yet):** [github.com/apps/elpatcher](https://github.com/apps/elpatcher)
+
 ## Features
 
 - Automated issue analysis and implementation
