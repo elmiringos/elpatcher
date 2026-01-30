@@ -1,0 +1,36 @@
+# Patcher Server
+# Usage: docker-compose up -d
+
+services:
+  patcher-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      # Server
+      - HOST=0.0.0.0
+      - PORT=8080
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # GitHub App
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-}
+      - GITHUB_APP_PRIVATE_KEY_PATH=/app/private-key.pem
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      # LLM
+      - LLM_PROVIDER=${LLM_PROVIDER:-claude}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Agent
+      - MAX_ITERATIONS=${MAX_ITERATIONS:-5}
+    volumes:
+      - ${GITHUB_APP_PRIVATE_KEY_PATH:-./private-key.pem}:/app/private-key.pem:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

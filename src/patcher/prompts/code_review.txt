@@ -1,0 +1,32 @@
+Review this pull request diff.
+
+PR Title: {pr_title}
+PR Description: {pr_body}
+
+Related Issue: #{issue_number} - {issue_title}
+{issue_body}
+
+Diff:
+```diff
+{diff}
+```
+
+Analyze the code changes and provide:
+1. A brief assessment of the implementation
+2. Any issues found (bugs, security, performance)
+3. Suggestions for improvement
+
+Format your response as:
+ASSESSMENT: <brief assessment>
+
+ISSUES:
+- [SEVERITY] file:line - description
+
+SUGGESTIONS:
+- [SEVERITY] file:line - suggestion
+
+Severity levels: ERROR, WARNING, INFO
+
+ERROR: Must be fixed before merge (bugs, security issues)
+WARNING: Should be fixed (code smells, potential issues)
+INFO: Suggestions for improvement (style, optimization)

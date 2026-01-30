@@ -1,0 +1,20 @@
+Analyze this GitHub issue and extract the requirements.
+
+Issue Title: {title}
+
+Issue Body:
+{body}
+
+Respond in this exact format:
+SUMMARY: <one sentence summary>
+TASKS:
+- <task 1>
+- <task 2>
+FILES_TO_MODIFY:
+- <file path>
+FILES_TO_CREATE:
+- <file path>
+TEST_REQUIREMENTS:
+- <test requirement>
+
+Be specific about file paths based on the repository structure.

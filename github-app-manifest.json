@@ -1,0 +1,33 @@
+{
+  "name": "Patcher AI Agent",
+  "url": "https://github.com/your-org/patcher",
+  "hook_attributes": {
+    "url": "https://your-server.com/webhook",
+    "active": true
+  },
+  "redirect_url": "https://your-server.com/callback",
+  "callback_urls": [
+    "https://your-server.com/callback"
+  ],
+  "setup_url": "https://your-server.com/setup",
+  "description": "AI-powered code generation and review agent for automated SDLC. Automatically creates onboarding PR when installed.",
+  "public": false,
+  "default_events": [
+    "installation",
+    "installation_repositories",
+    "issues",
+    "issue_comment",
+    "pull_request",
+    "pull_request_review",
+    "check_run",
+    "check_suite"
+  ],
+  "default_permissions": {
+    "contents": "write",
+    "issues": "write",
+    "pull_requests": "write",
+    "checks": "read",
+    "metadata": "read",
+    "workflows": "write"
+  }
+}

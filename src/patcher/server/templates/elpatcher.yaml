@@ -1,0 +1,89 @@
+# Patcher AI Agent Workflow
+# Автоматический AI code review для Pull Requests
+
+name: Patcher AI Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  PATCHER_API_URL: https://bee30e3a87e5.ngrok-free.app
+
+concurrency:
+  group: patcher-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  patcher-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+
+    # Только для PR с нужными лейблами или patcher/* веток
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'elpatcher') ||
+      contains(github.event.pull_request.labels.*.name, 'ai-review') ||
+      startsWith(github.event.pull_request.head.ref, 'patcher/')
+
+    steps:
+      - name: Get AI Review
+        id: review
+        run: |
+          echo "🤖 Requesting AI review for PR #${{ github.event.pull_request.number }}"
+
+          response=$(curl -s -X POST "${{ env.PATCHER_API_URL }}/api/review" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Token: ${{ secrets.GITHUB_TOKEN }}" \
+            -d '{
+              "pr_number": ${{ github.event.pull_request.number }},
+              "repo": "${{ github.repository }}",
+              "head_sha": "${{ github.event.pull_request.head.sha }}"
+            }')
+
+          # Check for errors
+          status=$(echo "$response" | jq -r '.status // "error"')
+          if [ "$status" != "success" ]; then
+            echo "❌ Review API error:"
+            echo "$response" | jq .
+            exit 1
+          fi
+
+          # Extract review data
+          approved=$(echo "$response" | jq -r '.approved')
+          echo "$response" | jq -r '.review_body' > /tmp/review_body.md
+
+          echo "approved=$approved" >> $GITHUB_OUTPUT
+
+          # Log summary
+          echo ""
+          echo "📊 Review Summary:"
+          echo "$response" | jq -r '.summary'
+
+      - name: Post Review (Approved)
+        if: steps.review.outputs.approved == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "✅ Approving PR"
+          gh pr review ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --approve \
+            --body-file /tmp/review_body.md
+
+      - name: Post Review (Changes Requested)
+        if: steps.review.outputs.approved == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "❌ Requesting changes"
+          gh pr review ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --request-changes \
+            --body-file /tmp/review_body.md
+
+          # Fail the workflow to block merge
+          exit 1

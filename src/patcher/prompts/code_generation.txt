@@ -1,0 +1,23 @@
+Implement the changes for this issue.
+
+Issue: {title}
+{body}
+
+Implementation Plan:
+{plan}
+
+Existing files:
+{context}
+
+Generate the complete content for each file that needs to be created or modified.
+For each file, use this exact format:
+
+=== FILE: <file_path> ===
+<complete file content>
+=== END FILE ===
+
+Guidelines:
+- Write clean, maintainable code
+- Add docstrings to functions and classes
+- Handle edge cases appropriately
+- Include appropriate error handling

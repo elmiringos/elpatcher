@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "patcher"
+version = "0.1.0"
+description = "AI Code Agent for automated GitHub SDLC"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "Elmir" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "PyGithub>=2.1.0",
+    "GitPython>=3.1.40",
+    "httpx>=0.25.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.0.0",
+    "rich>=13.7.0",
+    # LangChain ecosystem
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-anthropic>=0.2.0",
+    "langgraph>=0.2.0",
+    # GitHub App & Webhook server
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "PyJWT>=2.8.0",
+    "cryptography>=42.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+# Tree-sitter for advanced code parsing (optional, falls back to regex)
+parsing = [
+    "tree-sitter-languages>=1.8.0",
+]
+
+[project.scripts]
+patcher-server = "patcher.server.main:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/patcher"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/patcher/server/templates" = "patcher/server/templates"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["patcher"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
