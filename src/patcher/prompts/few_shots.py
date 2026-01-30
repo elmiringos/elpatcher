@@ -1,211 +1,245 @@
 """Few-shot examples for patcher agents.
 
-Fill in these examples to improve agent performance.
-Each example should demonstrate the expected input/output format.
+These examples demonstrate the expected input/output format and help
+the model understand how to generate proper responses.
 """
 
 # =============================================================================
 # CODE GENERATION EXAMPLES
 # =============================================================================
-# Examples of generating code from issue descriptions
-# Format: list of {"issue": str, "context": str, "response": str}
 
-CODE_GENERATION_EXAMPLES: list[dict] = [
-    # Example 1: Add a new function
-    # {
-    #     "issue": """
-    #     Issue #42: Add greeting function
-    #     Create a function that returns a greeting message with the user's name.
-    #     """,
-    #     "context": """
-    #     Repository structure:
-    #     - src/utils.py (utility functions)
-    #     - src/main.py (entry point)
-    #     - tests/test_utils.py (tests)
-    #     """,
-    #     "response": """
-    #     {
-    #         "files": [
-    #             {
-    #                 "path": "src/utils.py",
-    #                 "content": "def greet(name: str) -> str:\\n    return f\\"Hello, {name}!\\"",
-    #                 "action": "modify"
-    #             },
-    #             {
-    #                 "path": "tests/test_utils.py",
-    #                 "content": "def test_greet():\\n    assert greet(\\"World\\") == \\"Hello, World!\\"",
-    #                 "action": "modify"
-    #             }
-    #         ],
-    #         "explanation": "Added greet function with test"
-    #     }
-    #     """
-    # },
-
-    # Example 2: Fix a bug
-    # {
-    #     "issue": "...",
-    #     "context": "...",
-    #     "response": "..."
-    # },
+CODE_GENERATION_EXAMPLES = [
+    {
+        "issue": "Add a function to validate email addresses",
+        "output": """{
+    "files": [
+        {
+            "path": "src/validators.py",
+            "content": "import re\\n\\ndef validate_email(email: str) -> bool:\\n    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\\\.[a-zA-Z0-9-.]+$'\\n    return bool(re.match(pattern, email))",
+            "action": "modify"
+        },
+        {
+            "path": "tests/test_validators.py",
+            "content": "from src.validators import validate_email\\n\\ndef test_validate_email_valid():\\n    assert validate_email('user@example.com') is True\\n\\ndef test_validate_email_invalid():\\n    assert validate_email('invalid-email') is False",
+            "action": "modify"
+        }
+    ],
+    "explanation": "Added email validation function with regex pattern and tests"
+}"""
+    },
+    {
+        "issue": "Create a hello world endpoint that returns JSON",
+        "output": """{
+    "files": [
+        {
+            "path": "src/routes.py",
+            "content": "from flask import jsonify\\n\\n@app.route('/hello')\\ndef hello():\\n    return jsonify({'message': 'Hello, World!'})",
+            "action": "modify"
+        }
+    ],
+    "explanation": "Added /hello endpoint returning JSON response"
+}"""
+    },
 ]
 
 
 # =============================================================================
 # CODE FIX EXAMPLES (based on review feedback)
 # =============================================================================
-# Examples of fixing code based on review comments
-# Format: list of {"feedback": str, "original_code": str, "fixed_code": str}
 
-CODE_FIX_EXAMPLES: list[dict] = [
-    # Example 1: Fix missing error handling
-    # {
-    #     "feedback": """
-    #     [ERROR] src/api.py:25 - Missing null check for user input
-    #     Suggestion: Add validation before processing
-    #     """,
-    #     "original_code": """
-    #     def process_user(name):
-    #         return name.upper()
-    #     """,
-    #     "fixed_code": """
-    #     def process_user(name: str | None) -> str:
-    #         if not name:
-    #             raise ValueError("Name cannot be empty")
-    #         return name.upper()
-    #     """
-    # },
-
-    # Example 2: Fix type hints
-    # {
-    #     "feedback": "...",
-    #     "original_code": "...",
-    #     "fixed_code": "..."
-    # },
+CODE_FIX_EXAMPLES = [
+    {
+        "feedback": "[ERROR] src/api.py:25 - Missing input validation. User input is used directly without checking for None.",
+        "output": """{
+    "files": [
+        {
+            "path": "src/api.py",
+            "content": "def process_user(name: str | None) -> str:\\n    if not name:\\n        raise ValueError('Name cannot be empty')\\n    return name.strip().upper()",
+            "action": "modify"
+        }
+    ],
+    "explanation": "Added None check and input validation before processing"
+}"""
+    },
+    {
+        "feedback": "[ERROR] Missing error handling for database connection failure",
+        "output": """{
+    "files": [
+        {
+            "path": "src/db.py",
+            "content": "def get_connection():\\n    try:\\n        conn = sqlite3.connect(DB_PATH)\\n        return conn\\n    except sqlite3.Error as e:\\n        logger.error(f'Database connection failed: {e}')\\n        raise DatabaseConnectionError(f'Failed to connect: {e}')",
+            "action": "modify"
+        }
+    ],
+    "explanation": "Added try-except block with proper error logging and custom exception"
+}"""
+    },
 ]
 
 
 # =============================================================================
 # CI FIX EXAMPLES
 # =============================================================================
-# Examples of fixing code based on CI failures
-# Format: list of {"ci_error": str, "file_content": str, "fix": str}
 
-CI_FIX_EXAMPLES: list[dict] = [
-    # Example 1: Fix linting error
-    # {
-    #     "ci_error": """
-    #     ruff check failed:
-    #     src/main.py:10:1: E302 expected 2 blank lines, found 1
-    #     """,
-    #     "file_content": """
-    #     import os
-    #     def main():
-    #         pass
-    #     """,
-    #     "fix": """
-    #     import os
-    #
-    #
-    #     def main():
-    #         pass
-    #     """
-    # },
-
-    # Example 2: Fix test failure
-    # {
-    #     "ci_error": """
-    #     pytest failed:
-    #     FAILED tests/test_calc.py::test_add - AssertionError: assert 3 == 4
-    #     """,
-    #     "file_content": "...",
-    #     "fix": "..."
-    # },
-
-    # Example 3: Fix type error
-    # {
-    #     "ci_error": """
-    #     mypy error:
-    #     src/utils.py:15: error: Incompatible return value type (got "str", expected "int")
-    #     """,
-    #     "file_content": "...",
-    #     "fix": "..."
-    # },
+CI_FIX_EXAMPLES = [
+    {
+        "error": "ruff check failed:\nsrc/main.py:10:1: E302 expected 2 blank lines, found 1",
+        "output": """{
+    "files": [
+        {
+            "path": "src/main.py",
+            "content": "import os\\n\\n\\ndef main():\\n    pass",
+            "action": "modify"
+        }
+    ],
+    "explanation": "Added missing blank line to comply with PEP8"
+}"""
+    },
+    {
+        "error": "pytest failed:\nFAILED tests/test_calc.py::test_add - AssertionError: assert 5 == 4",
+        "output": """{
+    "files": [
+        {
+            "path": "src/calc.py",
+            "content": "def add(a: int, b: int) -> int:\\n    return a + b  # Fixed: was returning a * b",
+            "action": "modify"
+        }
+    ],
+    "explanation": "Fixed add function - was multiplying instead of adding"
+}"""
+    },
+    {
+        "error": "mypy error:\nsrc/utils.py:15: error: Incompatible return value type (got 'str', expected 'int')",
+        "output": """{
+    "files": [
+        {
+            "path": "src/utils.py",
+            "content": "def get_count() -> int:\\n    return int(self._count)  # Fixed: convert to int",
+            "action": "modify"
+        }
+    ],
+    "explanation": "Fixed return type by converting string to int"
+}"""
+    },
 ]
 
 
 # =============================================================================
 # REVIEW EXAMPLES
 # =============================================================================
-# Examples of code review assessments
-# Format: list of {"diff": str, "issue_requirements": str, "review": str}
 
-REVIEW_EXAMPLES: list[dict] = [
-    # Example 1: Approved review
-    # {
-    #     "diff": """
-    #     +def validate_email(email: str) -> bool:
-    #     +    import re
-    #     +    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    #     +    return bool(re.match(pattern, email))
-    #     """,
-    #     "issue_requirements": "Add email validation function",
-    #     "review": """
-    #     {
-    #         "assessment": "Clean implementation with proper regex pattern",
-    #         "issues": [],
-    #         "requirements_met": true,
-    #         "requirements_notes": "Email validation implemented correctly",
-    #         "approved": true
-    #     }
-    #     """
-    # },
-
-    # Example 2: Changes requested
-    # {
-    #     "diff": "...",
-    #     "issue_requirements": "...",
-    #     "review": """
-    #     {
-    #         "assessment": "Implementation has security issues",
-    #         "issues": [
-    #             {
-    #                 "severity": "error",
-    #                 "file_path": "src/auth.py",
-    #                 "line": 42,
-    #                 "description": "Password stored in plain text",
-    #                 "suggestion": "Use bcrypt or argon2 for password hashing"
-    #             }
-    #         ],
-    #         "requirements_met": false,
-    #         "requirements_notes": "Security requirements not met",
-    #         "approved": false
-    #     }
-    #     """
-    # },
+REVIEW_EXAMPLES = [
+    {
+        "issue": "Add email validation function",
+        "diff": """+def validate_email(email: str) -> bool:
++    import re
++    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$'
++    return bool(re.match(pattern, email))""",
+        "output": """{
+    "assessment": "Implementation correctly adds email validation with proper regex",
+    "issues": [],
+    "requirements_met": true,
+    "requirements_notes": "Email validation function implemented as requested",
+    "approved": true
+}"""
+    },
+    {
+        "issue": "Add user authentication with password hashing",
+        "diff": """+def authenticate(username: str, password: str) -> bool:
++    user = db.get_user(username)
++    return user.password == password""",
+        "output": """{
+    "assessment": "Critical security issue - password stored/compared in plain text",
+    "issues": [
+        {
+            "severity": "error",
+            "file_path": "src/auth.py",
+            "line": 3,
+            "description": "Password compared in plain text - security vulnerability",
+            "suggestion": "Use bcrypt.checkpw() to compare hashed passwords"
+        }
+    ],
+    "requirements_met": false,
+    "requirements_notes": "Password hashing requirement not implemented",
+    "approved": false
+}"""
+    },
+    {
+        "issue": "Add logging to the application",
+        "diff": """+import logging
++logger = logging.getLogger(__name__)
++
++def process():
++    logger.info('Processing started')
++    # ... existing code ...
++    logger.info('Processing complete')""",
+        "output": """{
+    "assessment": "Logging implemented correctly with standard library",
+    "issues": [],
+    "requirements_met": true,
+    "requirements_notes": "Logging added as requested",
+    "approved": true
+}"""
+    },
 ]
 
 
-def format_few_shot_examples(examples: list[dict], template: str) -> str:
-    """Format few-shot examples into a prompt string.
+# =============================================================================
+# FORMATTING FUNCTIONS
+# =============================================================================
 
-    Args:
-        examples: List of example dictionaries
-        template: Template string with placeholders matching dict keys
-
-    Returns:
-        Formatted examples string
-    """
-    if not examples:
+def format_code_generation_examples() -> str:
+    """Format code generation examples for prompt."""
+    if not CODE_GENERATION_EXAMPLES:
         return ""
 
-    formatted = ["Here are some examples:\n"]
-    for i, example in enumerate(examples, 1):
-        formatted.append(f"--- Example {i} ---")
-        try:
-            formatted.append(template.format(**example))
-        except KeyError:
-            continue
-        formatted.append("")
+    lines = ["\n--- EXAMPLES ---"]
+    for i, ex in enumerate(CODE_GENERATION_EXAMPLES, 1):
+        lines.append(f"\nExample {i}:")
+        lines.append(f"Issue: {ex['issue']}")
+        lines.append(f"Expected output:\n{ex['output']}")
+    lines.append("--- END EXAMPLES ---\n")
+    return "\n".join(lines)
 
-    return "\n".join(formatted)
+
+def format_code_fix_examples() -> str:
+    """Format code fix examples for prompt."""
+    if not CODE_FIX_EXAMPLES:
+        return ""
+
+    lines = ["\n--- EXAMPLES ---"]
+    for i, ex in enumerate(CODE_FIX_EXAMPLES, 1):
+        lines.append(f"\nExample {i}:")
+        lines.append(f"Feedback: {ex['feedback']}")
+        lines.append(f"Expected output:\n{ex['output']}")
+    lines.append("--- END EXAMPLES ---\n")
+    return "\n".join(lines)
+
+
+def format_ci_fix_examples() -> str:
+    """Format CI fix examples for prompt."""
+    if not CI_FIX_EXAMPLES:
+        return ""
+
+    lines = ["\n--- EXAMPLES ---"]
+    for i, ex in enumerate(CI_FIX_EXAMPLES, 1):
+        lines.append(f"\nExample {i}:")
+        lines.append(f"CI Error: {ex['error']}")
+        lines.append(f"Expected output:\n{ex['output']}")
+    lines.append("--- END EXAMPLES ---\n")
+    return "\n".join(lines)
+
+
+def format_review_examples() -> str:
+    """Format review examples for prompt."""
+    if not REVIEW_EXAMPLES:
+        return ""
+
+    lines = ["\n--- EXAMPLES ---"]
+    for i, ex in enumerate(REVIEW_EXAMPLES, 1):
+        lines.append(f"\nExample {i}:")
+        lines.append(f"Issue requirement: {ex['issue']}")
+        lines.append(f"Diff:\n{ex['diff']}")
+        lines.append(f"Expected review:\n{ex['output']}")
+    lines.append("--- END EXAMPLES ---\n")
+    return "\n".join(lines)

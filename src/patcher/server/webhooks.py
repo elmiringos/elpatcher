@@ -22,6 +22,66 @@ logger = logging.getLogger(__name__)
 # Format: {"owner/repo#pr_number": iteration_count}
 _pr_iteration_counts: dict[str, int] = {}
 
+# Runtime storage to prevent duplicate issue processing
+# Format: {"owner/repo#issue_number": True}
+_processing_issues: dict[str, bool] = {}
+
+
+def get_issue_processing_key(repo: str, issue_number: int) -> str:
+    """Generate key for issue processing tracking."""
+    return f"{repo}#issue-{issue_number}"
+
+
+def is_issue_processing(repo: str, issue_number: int) -> bool:
+    """Check if issue is already being processed."""
+    key = get_issue_processing_key(repo, issue_number)
+    return _processing_issues.get(key, False)
+
+
+def mark_issue_processing(repo: str, issue_number: int) -> bool:
+    """Mark issue as processing. Returns False if already processing."""
+    key = get_issue_processing_key(repo, issue_number)
+    if _processing_issues.get(key, False):
+        return False
+    _processing_issues[key] = True
+    return True
+
+
+def clear_issue_processing(repo: str, issue_number: int) -> None:
+    """Clear issue processing flag."""
+    key = get_issue_processing_key(repo, issue_number)
+    _processing_issues.pop(key, None)
+
+
+# Runtime storage to prevent duplicate PR review processing
+_reviewing_prs: dict[str, bool] = {}
+
+
+def get_pr_review_key(repo: str, pr_number: int) -> str:
+    """Generate key for PR review tracking."""
+    return f"{repo}#pr-{pr_number}"
+
+
+def is_pr_reviewing(repo: str, pr_number: int) -> bool:
+    """Check if PR is already being reviewed."""
+    key = get_pr_review_key(repo, pr_number)
+    return _reviewing_prs.get(key, False)
+
+
+def mark_pr_reviewing(repo: str, pr_number: int) -> bool:
+    """Mark PR as being reviewed. Returns False if already reviewing."""
+    key = get_pr_review_key(repo, pr_number)
+    if _reviewing_prs.get(key, False):
+        return False
+    _reviewing_prs[key] = True
+    return True
+
+
+def clear_pr_reviewing(repo: str, pr_number: int) -> None:
+    """Clear PR reviewing flag."""
+    key = get_pr_review_key(repo, pr_number)
+    _reviewing_prs.pop(key, None)
+
 
 def get_pr_iteration_key(repo: str, pr_number: int) -> str:
     """Generate key for PR iteration tracking."""
@@ -160,6 +220,11 @@ async def handle_issue_event(payload: WebhookPayload) -> dict:
         logger.info(f"Skipping issue #{issue_number} - action: {payload.action}")
         return {"status": "skipped", "reason": f"unsupported action: {payload.action}"}
 
+    # Prevent duplicate processing (opened + labeled events can fire together)
+    if not mark_issue_processing(payload.repository, issue_number):
+        logger.info(f"Skipping issue #{issue_number} - already being processed")
+        return {"status": "skipped", "reason": "already processing"}
+
     logger.info(f"Processing issue #{issue_number} in {payload.repository}")
 
     try:
@@ -194,6 +259,9 @@ async def handle_issue_event(payload: WebhookPayload) -> dict:
         logger.exception(f"Error processing issue #{issue_number}")
         return {"status": "error", "error": str(e)}
 
+    finally:
+        clear_issue_processing(payload.repository, issue_number)
+
 
 async def handle_pull_request_event(payload: WebhookPayload) -> dict:
     """Handle pull request events.
@@ -218,6 +286,11 @@ async def handle_pull_request_event(payload: WebhookPayload) -> dict:
     if payload.action not in ["opened", "synchronize", "reopened"]:
         logger.info(f"Skipping PR #{pr_number} - action: {payload.action}")
         return {"status": "skipped", "reason": f"unsupported action: {payload.action}"}
+
+    # Prevent duplicate review processing
+    if not mark_pr_reviewing(payload.repository, pr_number):
+        logger.info(f"Skipping PR #{pr_number} - already being reviewed")
+        return {"status": "skipped", "reason": "already reviewing"}
 
     logger.info(f"Reviewing PR #{pr_number} in {payload.repository}")
 
@@ -252,6 +325,9 @@ async def handle_pull_request_event(payload: WebhookPayload) -> dict:
     except Exception as e:
         logger.exception(f"Error reviewing PR #{pr_number}")
         return {"status": "error", "error": str(e)}
+
+    finally:
+        clear_pr_reviewing(payload.repository, pr_number)
 
 
 async def handle_pull_request_review_event(payload: WebhookPayload) -> dict:

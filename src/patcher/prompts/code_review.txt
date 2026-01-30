@@ -1,4 +1,4 @@
-Review this pull request diff.
+Review this pull request diff STRICTLY against the related issue.
 
 PR Title: {pr_title}
 PR Description: {pr_body}
@@ -11,22 +11,26 @@ Diff:
 {diff}
 ```
 
-Analyze the code changes and provide:
-1. A brief assessment of the implementation
-2. Any issues found (bugs, security, performance)
-3. Suggestions for improvement
+STRICT REVIEW CRITERIA:
+1. Does this PR FULLY solve the issue requirements? List each requirement and whether it's met.
+2. Are there any CRITICAL bugs that would break the implementation?
+3. Are there any SECURITY vulnerabilities?
+
+DO NOT REPORT:
+- Style suggestions
+- Performance optimizations (unless critical)
+- "Nice to have" improvements
+
+APPROVAL RULE:
+- If issue requirements are met AND no critical bugs/security issues → APPROVE
+- Only reject if issue is NOT solved or has critical problems
 
 Format your response as:
-ASSESSMENT: <brief assessment>
+ASSESSMENT: <brief assessment focusing on issue requirements>
 
-ISSUES:
-- [SEVERITY] file:line - description
+ISSUES (only critical ones):
+- [ERROR/WARNING] file:line - description
 
-SUGGESTIONS:
-- [SEVERITY] file:line - suggestion
-
-Severity levels: ERROR, WARNING, INFO
-
-ERROR: Must be fixed before merge (bugs, security issues)
-WARNING: Should be fixed (code smells, potential issues)
-INFO: Suggestions for improvement (style, optimization)
+Severity levels (use sparingly):
+ERROR: Blocks issue resolution (critical bugs, security, missing requirements)
+WARNING: May affect issue resolution (potential bugs that impact functionality)

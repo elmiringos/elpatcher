@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel
 
 from patcher.server.config import get_settings
+from patcher.server.github_app import get_github_app_auth
 from patcher.github.client import GitHubClient
 from patcher.llm import get_provider
 from patcher.agents import ReviewAgent
@@ -98,7 +99,19 @@ async def review_pr(
     logger.info(f"Sync review request for PR #{request.pr_number} in {request.repo}")
 
     try:
-        github_client = GitHubClient(token=github_token, repo_name=request.repo)
+        # Use GitHub App token for full access (including issues)
+        # Workflow's GITHUB_TOKEN may not have issues permission
+        app_auth = get_github_app_auth()
+        app_token = await app_auth.get_token_for_repo(request.repo)
+
+        if app_token:
+            github_client = GitHubClient(token=app_token, repo_name=request.repo)
+            logger.info(f"Using GitHub App token for {request.repo}")
+        else:
+            # Fallback to workflow token if app not installed
+            github_client = GitHubClient(token=github_token, repo_name=request.repo)
+            logger.warning(f"GitHub App not installed for {request.repo}, using workflow token")
+
         llm_provider = get_provider(provider_name=settings.llm_provider)
 
         context = AgentContext(

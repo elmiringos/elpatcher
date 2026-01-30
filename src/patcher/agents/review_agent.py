@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage
 from patcher.agents.base import BaseAgent, AgentContext
 from patcher.github.models import IssueData, PRData, CIResult, CIStatus, ReviewComment
 from patcher.llm.schemas import CodeReview, CIAnalysis as CIAnalysisSchema
+from patcher.prompts import format_review_examples
 from patcher.state.models import IterationStatus
 from patcher.state.manager import StateManager
 
@@ -45,19 +46,19 @@ class ReviewResult:
 class ReviewAgent(BaseAgent):
     """Agent that reviews PRs and provides feedback using LangChain."""
 
-    SYSTEM_PROMPT = """You are an experienced code reviewer. Your task is to review pull requests and provide constructive feedback.
+    SYSTEM_PROMPT = """You are a strict code reviewer. Your PRIMARY task is to verify that the PR solves the related issue.
 
 Guidelines:
-1. Focus on code quality, correctness, and maintainability
-2. Check for potential bugs, security issues, and performance problems
-3. Verify that the implementation matches the requirements
-4. Suggest improvements when appropriate
-5. Be constructive and specific in your feedback
+1. MAIN CRITERION: Does the implementation solve the issue requirements?
+2. Only report issues that BLOCK the issue from being solved
+3. DO NOT report style suggestions, minor optimizations, or "nice to have" improvements
+4. If the issue is solved and there are no critical bugs/security issues - APPROVE
 
-Severity levels:
-- error: Must be fixed before merge (bugs, security issues)
-- warning: Should be fixed (code smells, potential issues)
-- info: Suggestions for improvement (style, optimization)
+Severity levels (use sparingly):
+- error: Blocks issue resolution (critical bugs, security vulnerabilities, missing requirements)
+- warning: May affect issue resolution (potential bugs that impact functionality)
+
+DO NOT use 'info' severity - we don't want style suggestions.
 
 IMPORTANT: If the PR contains changes to GitHub Actions workflows (.github/workflows/*) or CI/CD configuration files, flag this as an error - automated agents should not modify CI/CD pipelines."""
 
@@ -188,10 +189,11 @@ IMPORTANT: If the PR contains changes to GitHub Actions workflows (.github/workf
             return result
 
         except Exception as e:
-            self._log_error(f"Review agent failed: {e}")
+            error_msg = str(e) if e else "Unknown error"
+            self.logger.exception(f"Review agent failed: {error_msg}")
             return ReviewResult(
                 approved=False,
-                summary=f"Review failed: {e}",
+                summary=f"Review failed: {error_msg}",
             )
 
     async def _wait_for_ci(
@@ -263,8 +265,9 @@ IMPORTANT: If the PR contains changes to GitHub Actions workflows (.github/workf
                 issue_number = int(match.group(1))
                 try:
                     return self.github.get_issue(issue_number)
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Token may not have issues permission (e.g., GITHUB_TOKEN from workflow)
+                    self._log_warning(f"Could not fetch issue #{issue_number}: {e}")
 
         return None
 
@@ -311,14 +314,13 @@ IMPORTANT: If the PR contains changes to GitHub Actions workflows (.github/workf
             if check.status == CIStatus.FAILURE:
                 failures.append(f"{check.name}: {check.output or 'Failed'}")
 
-        # Determine passed status based on relevant checks only
+        # Determine passed status based on failures only
+        # If no explicit failures, consider CI passed (pending/completed = ok)
         if not relevant_checks:
             passed = True  # No patcher CI checks = passed
         else:
-            passed = all(
-                check.status == CIStatus.SUCCESS
-                for check in relevant_checks
-            )
+            # Only fail if there are actual failures, not pending checks
+            passed = len(failures) == 0
 
         if not passed and failures:
             # Use LLM to analyze failures and suggest fixes
@@ -346,11 +348,10 @@ Determine:
         # Determine summary based on actual state
         if not relevant_checks:
             summary = "No patcher CI checks found" if patcher_only else "No CI checks found"
-        elif passed:
-            check_count = len(relevant_checks)
-            summary = f"All {check_count} patcher CI check(s) passed" if patcher_only else "All CI checks passed"
         elif failures:
             summary = f"{len(failures)} patcher check(s) failed" if patcher_only else f"{len(failures)} check(s) failed"
+        elif passed:
+            summary = "CI checks passed"
         else:
             summary = "CI checks completed"
 
@@ -383,7 +384,9 @@ Related Issue: #{issue.number} - {issue.title}
 {issue.body}
 """
 
-        prompt = f"""Review this pull request diff.
+        few_shot = format_review_examples()
+
+        prompt = f"""Review this pull request diff STRICTLY against the related issue.
 
 PR Title: {pr.title}
 PR Description: {pr.body}
@@ -393,15 +396,24 @@ Diff:
 ```diff
 {diff[:10000]}
 ```
+{few_shot}
+STRICT REVIEW CRITERIA:
+1. Does this PR FULLY solve the issue requirements? List each requirement and whether it's met.
+2. Are there any CRITICAL bugs that would break the implementation?
+3. Are there any SECURITY vulnerabilities?
 
-Analyze the code changes and provide:
-1. Overall assessment of the implementation
-2. Any issues found (bugs, security, performance, style)
-3. Whether the implementation meets the requirements (if issue provided)
-4. Whether the PR should be approved
+DO NOT REPORT:
+- Style suggestions
+- Performance optimizations (unless critical)
+- "Nice to have" improvements
+- Code that works but could be "better"
 
-For each issue found, specify:
-- severity: 'error', 'warning', or 'info'
+APPROVAL RULE:
+- If issue requirements are met AND no critical bugs/security issues → APPROVE
+- Only reject if issue is NOT solved or has critical problems
+
+For issues found (ONLY critical ones), specify:
+- severity: 'error' or 'warning' (NO 'info')
 - file_path: the file where the issue was found
 - line: line number if applicable
 - description: what the issue is

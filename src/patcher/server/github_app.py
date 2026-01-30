@@ -122,6 +122,47 @@ class GitHubAppAuth:
         token = await self.get_installation_token(installation_id)
         return self.get_installation_client(installation_id, token)
 
+    async def get_installation_for_repo(self, repo_full_name: str) -> int | None:
+        """Get installation ID for a repository.
+
+        Args:
+            repo_full_name: Repository full name (owner/repo)
+
+        Returns:
+            Installation ID or None if not found
+        """
+        jwt_token = self.generate_jwt()
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.github.com/repos/{repo_full_name}/installation",
+                headers={
+                    "Authorization": f"Bearer {jwt_token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            data = response.json()
+
+        return data.get("id")
+
+    async def get_token_for_repo(self, repo_full_name: str) -> str | None:
+        """Get installation token for a repository.
+
+        Args:
+            repo_full_name: Repository full name (owner/repo)
+
+        Returns:
+            Installation access token or None if app not installed
+        """
+        installation_id = await self.get_installation_for_repo(repo_full_name)
+        if not installation_id:
+            return None
+        return await self.get_installation_token(installation_id)
+
     def get_app_info(self) -> dict:
         """Get information about the GitHub App.
 

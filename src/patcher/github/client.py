@@ -335,11 +335,18 @@ class GitHubClient:
                             }
                         )
 
-            pr.create_review(
-                body=body,
-                event=event,
-                comments=review_comments or None,
-            )
+            # PyGithub requires comments to be a list or omitted, not None
+            if review_comments:
+                pr.create_review(
+                    body=body,
+                    event=event,
+                    comments=review_comments,
+                )
+            else:
+                pr.create_review(
+                    body=body,
+                    event=event,
+                )
         except GithubException as e:
             raise GitHubClientError(f"Failed to post review on PR #{pr_number}: {e}") from e
 

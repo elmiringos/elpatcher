@@ -107,7 +107,7 @@ IMPORTANT: Only fix what's needed to pass CI. Don't refactor or add features."""
 # REVIEW PROMPT
 # =============================================================================
 
-REVIEW_PROMPT = """Review this pull request diff.
+REVIEW_PROMPT = """Review this pull request diff STRICTLY against the related issue.
 
 PR Title: {pr_title}
 PR Description: {pr_body}
@@ -120,14 +120,23 @@ Diff:
 
 {few_shot_examples}
 
-Analyze the code changes and provide:
-1. Overall assessment of the implementation
-2. Any issues found (bugs, security, performance, style)
-3. Whether the implementation meets the requirements (if issue provided)
-4. Whether the PR should be approved
+STRICT REVIEW CRITERIA:
+1. Does this PR FULLY solve the issue requirements? List each requirement and whether it's met.
+2. Are there any CRITICAL bugs that would break the implementation?
+3. Are there any SECURITY vulnerabilities?
 
-For each issue found, specify:
-- severity: 'error', 'warning', or 'info'
+DO NOT REPORT:
+- Style suggestions
+- Performance optimizations (unless critical)
+- "Nice to have" improvements
+- Code that works but could be "better"
+
+APPROVAL RULE:
+- If issue requirements are met AND no critical bugs/security issues → APPROVE
+- Only reject if issue is NOT solved or has critical problems
+
+For issues found (ONLY critical ones), specify:
+- severity: 'error' or 'warning' (NO 'info')
 - file_path: the file where the issue was found
 - line: line number if applicable
 - description: what the issue is

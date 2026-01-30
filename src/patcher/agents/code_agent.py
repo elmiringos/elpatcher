@@ -17,6 +17,11 @@ from patcher.agents.base import BaseAgent, AgentContext
 from patcher.agents.tools import create_code_analysis_tools, create_github_tools
 from patcher.github.models import IssueData, FileChange as GHFileChange, CIResult, CIStatus
 from patcher.llm.schemas import CodeGeneration, FileChange
+from patcher.prompts import (
+    format_code_generation_examples,
+    format_code_fix_examples,
+    format_ci_fix_examples,
+)
 from patcher.state.models import AgentState as PatcherAgentState, IterationStatus
 from patcher.state.manager import StateManager
 
@@ -604,6 +609,8 @@ After analysis, I will generate the fixed code."""
 
         self._log_info(f"Primary language detected: {primary_lang}")
 
+        few_shot = format_code_generation_examples()
+
         prompt = f"""Based on the codebase analysis, implement the changes for this issue.
 
 IMPORTANT: This repository uses **{primary_lang.upper()}** as the primary language.
@@ -616,7 +623,7 @@ Issue #{issue.number}: {issue.title}
 
 Codebase Analysis:
 {repo_context[:8000]}
-
+{few_shot}
 Generate the complete content for each file that needs to be created or modified.
 For each file, specify:
 - path: the file path relative to repository root
@@ -660,6 +667,8 @@ Write code ONLY in {primary_lang.upper()}."""
         # Detect primary language
         primary_lang, _ = self._detect_primary_language()
 
+        few_shot = format_code_fix_examples()
+
         prompt = f"""Fix the code based on this review feedback.
 
 IMPORTANT: This repository uses **{primary_lang.upper()}** as the primary language.
@@ -672,7 +681,7 @@ Review Feedback:
 
 Analysis:
 {repo_context[:5000]}
-
+{few_shot}
 Generate the fixed content for each file that needs changes.
 Address all the feedback points in your fixes.
 Write all code in **{primary_lang.upper()}**.
@@ -733,6 +742,8 @@ For each file, specify:
         # Detect primary language
         primary_lang, _ = self._detect_primary_language()
 
+        few_shot = format_ci_fix_examples()
+
         prompt = f"""Analyze and fix the CI failures for this PR.
 
 IMPORTANT: This repository uses **{primary_lang.upper()}** as the primary language.
@@ -745,7 +756,7 @@ CI Failures:
 
 Repository Context:
 {repo_context[:5000]}
-
+{few_shot}
 Analyze each CI failure and generate fixes (in {primary_lang.upper()}):
 
 1. For linting errors (ruff, flake8, eslint):
