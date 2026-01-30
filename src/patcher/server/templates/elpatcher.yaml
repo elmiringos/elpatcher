@@ -1,7 +1,7 @@
-# Patcher AI Agent Workflow
+# ElPatcher AI Agent Workflow
 # Автоматический AI code review для Pull Requests
 
-name: Patcher AI Review
+name: ElPatcher AI Review
 
 on:
   pull_request:
@@ -12,22 +12,26 @@ permissions:
   pull-requests: write
 
 env:
-  PATCHER_API_URL: https://bee30e3a87e5.ngrok-free.app
+  ELPATCHER_API_URL: https://bee30e3a87e5.ngrok-free.app
 
 concurrency:
-  group: patcher-${{ github.event.pull_request.number }}
+  group: elpatcher-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  patcher-review:
+  elpatcher-review:
     name: AI Code Review
     runs-on: ubuntu-latest
 
-    # Только для PR с нужными лейблами или patcher/* веток
+    # Только для PR с нужными лейблами или elpatcher/* веток
+    # Исключаем onboarding PR (первый PR для установки workflow)
     if: |
-      contains(github.event.pull_request.labels.*.name, 'elpatcher') ||
-      contains(github.event.pull_request.labels.*.name, 'ai-review') ||
-      startsWith(github.event.pull_request.head.ref, 'patcher/')
+      (
+        contains(github.event.pull_request.labels.*.name, 'elpatcher') ||
+        contains(github.event.pull_request.labels.*.name, 'ai-review') ||
+        startsWith(github.event.pull_request.head.ref, 'elpatcher/')
+      ) &&
+      github.event.pull_request.head.ref != 'elpatcher/onboarding'
 
     steps:
       - name: Get AI Review
@@ -35,7 +39,7 @@ jobs:
         run: |
           echo "🤖 Requesting AI review for PR #${{ github.event.pull_request.number }}"
 
-          response=$(curl -s -X POST "${{ env.PATCHER_API_URL }}/api/review" \
+          response=$(curl -s -X POST "${{ env.ELPATCHER_API_URL }}/api/review" \
             -H "Content-Type: application/json" \
             -H "X-GitHub-Token: ${{ secrets.GITHUB_TOKEN }}" \
             -d '{

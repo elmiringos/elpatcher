@@ -13,7 +13,7 @@ from patcher.server.config import get_settings
 from patcher.server.github_app import get_github_app_auth
 from patcher.github.client import GitHubClient
 from patcher.llm import get_provider
-from patcher.agents import CodeAgent, ReviewAgent, AgentContext
+from patcher.agents import CodeAgent, AgentContext
 
 
 logger = logging.getLogger(__name__)
@@ -53,36 +53,6 @@ def clear_issue_processing(repo: str, issue_number: int) -> None:
     _processing_issues.pop(key, None)
 
 
-# Runtime storage to prevent duplicate PR review processing
-_reviewing_prs: dict[str, bool] = {}
-
-
-def get_pr_review_key(repo: str, pr_number: int) -> str:
-    """Generate key for PR review tracking."""
-    return f"{repo}#pr-{pr_number}"
-
-
-def is_pr_reviewing(repo: str, pr_number: int) -> bool:
-    """Check if PR is already being reviewed."""
-    key = get_pr_review_key(repo, pr_number)
-    return _reviewing_prs.get(key, False)
-
-
-def mark_pr_reviewing(repo: str, pr_number: int) -> bool:
-    """Mark PR as being reviewed. Returns False if already reviewing."""
-    key = get_pr_review_key(repo, pr_number)
-    if _reviewing_prs.get(key, False):
-        return False
-    _reviewing_prs[key] = True
-    return True
-
-
-def clear_pr_reviewing(repo: str, pr_number: int) -> None:
-    """Clear PR reviewing flag."""
-    key = get_pr_review_key(repo, pr_number)
-    _reviewing_prs.pop(key, None)
-
-
 def get_pr_iteration_key(repo: str, pr_number: int) -> str:
     """Generate key for PR iteration tracking."""
     return f"{repo}#{pr_number}"
@@ -120,8 +90,8 @@ class WebhookEvent(str, Enum):
 
 
 # Pattern to detect coding agent mentions in comments
-PATCHER_MENTION_PATTERN = re.compile(
-    r"(?:@patcher|/patcher)\s*(?:fix|исправь|исправить)?",
+ELPATCHER_MENTION_PATTERN = re.compile(
+    r"(?:@elpatcher|/elpatcher)\s*(?:fix|исправь|исправить)?",
     re.IGNORECASE,
 )
 
@@ -266,68 +236,22 @@ async def handle_issue_event(payload: WebhookPayload) -> dict:
 async def handle_pull_request_event(payload: WebhookPayload) -> dict:
     """Handle pull request events.
 
+    NOTE: Reviews are handled by GitHub Actions workflow via /api/review endpoint.
+    Webhook does NOT run ReviewAgent directly to avoid "can't approve own PR" issue.
+
     Args:
         payload: Webhook payload
 
     Returns:
         Result dictionary
     """
-    settings = get_settings()
     pr = payload.data.get("pull_request", {})
     pr_number = pr.get("number")
-    labels = [label.get("name") for label in pr.get("labels", [])]
-    head_ref = pr.get("head", {}).get("ref", "")
 
-    # Only process PRs with 'elpatcher' or 'ai-review' label or from patcher branches
-    if "elpatcher" not in labels and "ai-review" not in labels and not head_ref.startswith("patcher/"):
-        logger.info(f"Skipping PR #{pr_number} - no elpatcher/ai-review label")
-        return {"status": "skipped", "reason": "no elpatcher/ai-review label"}
-
-    if payload.action not in ["opened", "synchronize", "reopened"]:
-        logger.info(f"Skipping PR #{pr_number} - action: {payload.action}")
-        return {"status": "skipped", "reason": f"unsupported action: {payload.action}"}
-
-    # Prevent duplicate review processing
-    if not mark_pr_reviewing(payload.repository, pr_number):
-        logger.info(f"Skipping PR #{pr_number} - already being reviewed")
-        return {"status": "skipped", "reason": "already reviewing"}
-
-    logger.info(f"Reviewing PR #{pr_number} in {payload.repository}")
-
-    try:
-        # Get GitHub client for this installation
-        app_auth = get_github_app_auth()
-        token = await app_auth.get_installation_token(payload.installation_id)
-
-        github_client = GitHubClient(token=token, repo_name=payload.repository)
-        llm_provider = get_provider(provider_name=settings.llm_provider)
-
-        context = AgentContext(
-            github_client=github_client,
-            llm_provider=llm_provider,
-            max_iterations=settings.max_iterations,
-        )
-
-        agent = ReviewAgent(context)
-        result = await agent.run(pr_number=pr_number, check_ci=True, post_review=True)
-
-        logger.info(
-            f"Review complete for PR #{pr_number}: "
-            f"approved={result.approved}"
-        )
-
-        return {
-            "status": "success",
-            "approved": result.approved,
-            "summary": result.summary,
-        }
-
-    except Exception as e:
-        logger.exception(f"Error reviewing PR #{pr_number}")
-        return {"status": "error", "error": str(e)}
-
-    finally:
-        clear_pr_reviewing(payload.repository, pr_number)
+    # All PR reviews are handled by GitHub Actions workflow, not webhook
+    # Workflow calls /api/review endpoint which runs ReviewAgent
+    logger.info(f"PR #{pr_number} event received - review handled by workflow")
+    return {"status": "skipped", "reason": "reviews handled by workflow"}
 
 
 async def handle_pull_request_review_event(payload: WebhookPayload) -> dict:
@@ -346,7 +270,7 @@ async def handle_pull_request_review_event(payload: WebhookPayload) -> dict:
     head_ref = pr.get("head", {}).get("ref", "")
 
     # Only handle reviews on patcher PRs
-    if not head_ref.startswith("patcher/"):
+    if not head_ref.startswith("elpatcher/"):
         return {"status": "skipped", "reason": "not a patcher PR"}
 
     # Only handle "changes_requested" reviews
@@ -399,7 +323,7 @@ async def handle_pull_request_review_event(payload: WebhookPayload) -> dict:
 async def handle_issue_comment_event(payload: WebhookPayload) -> dict:
     """Handle issue_comment events for triggering coding agent.
 
-    Coding agent is triggered when someone comments with @patcher or /patcher
+    Coding agent is triggered when someone comments with @elpatcher or /elpatcher
     on a PR with elpatcher label.
 
     Args:
@@ -429,9 +353,9 @@ async def handle_issue_comment_event(payload: WebhookPayload) -> dict:
     if "elpatcher" not in labels and "ai-review" not in labels:
         return {"status": "skipped", "reason": "no elpatcher/ai-review label"}
 
-    # Check if comment mentions patcher
-    if not PATCHER_MENTION_PATTERN.search(comment_body):
-        return {"status": "skipped", "reason": "no patcher mention"}
+    # Check if comment mentions elpatcher
+    if not ELPATCHER_MENTION_PATTERN.search(comment_body):
+        return {"status": "skipped", "reason": "no elpatcher mention"}
 
     # Check iteration limit
     current_iterations = get_pr_iteration_count(payload.repository, pr_number)
@@ -449,7 +373,7 @@ async def handle_issue_comment_event(payload: WebhookPayload) -> dict:
 
             max_iterations_comment = f"""## ⚠️ Достигнут лимит итераций
 
-Patcher AI Agent достиг максимального количества итераций ({settings.max_iterations}).
+ElPatcher AI Agent достиг максимального количества итераций ({settings.max_iterations}).
 
 **Что это значит:**
 - Автоматические исправления больше не будут применяться к этому PR

@@ -1,4 +1,4 @@
-"""Main entry point for the Patcher webhook server."""
+"""Main entry point for the ElPatcher webhook server."""
 
 import uvicorn
 

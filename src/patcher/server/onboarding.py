@@ -15,26 +15,26 @@ WORKFLOW_TEMPLATE_PATH = Path(__file__).parent / "templates" / "elpatcher.yaml"
 WORKFLOW_TARGET_PATH = ".github/workflows/elpatcher.yaml"
 
 # Branch name for onboarding PR
-ONBOARDING_BRANCH = "patcher/onboarding"
+ONBOARDING_BRANCH = "elpatcher/onboarding"
 
-PR_TITLE = "🤖 Add Patcher AI Review workflow"
+PR_TITLE = "🤖 Add ElPatcher AI Review workflow"
 
-PR_BODY = """## Добро пожаловать в Patcher!
+PR_BODY = """## Добро пожаловать в ElPatcher!
 
 Этот PR добавляет GitHub Actions workflow для автоматического AI code review.
 
 ### Как это работает?
 
 ```
-PR создан → [Ваш CI, если есть] → Patcher Review → ✅/❌
+PR создан → [Ваш CI, если есть] → ElPatcher Review → ✅/❌
 ```
 
 - **Зелёный статус** = PR одобрен AI
 - **Красный статус** = AI запросил изменения (см. комментарии)
 
-**Никаких секретов не требуется!** LLM ключи хранятся на Patcher сервере.
+**Никаких секретов не требуется!** LLM ключи хранятся на ElPatcher сервере.
 
-### Что делает Patcher?
+### Что делает ElPatcher?
 
 - Если есть CI workflows — ждёт их завершения
 - Если CI нет — запускается сразу при создании PR
@@ -54,12 +54,12 @@ PR создан → [Ваш CI, если есть] → Patcher Review → ✅/�
 
 Добавьте метку `ai-review` или `elpatcher` к любому PR.
 
-Или создайте PR из ветки `patcher/*`.
+Или создайте PR из ветки `elpatcher/*`.
 
 ### Итеративный цикл
 
 Если AI Review запросил изменения:
-1. AI автоматически опубликует комментарий с `@patcher fix`
+1. AI автоматически опубликует комментарий с `@elpatcher fix`
 2. Coding Agent исправит код
 3. Review Agent проверит снова
 4. Цикл повторяется до успеха (макс. 5 итераций)
@@ -71,10 +71,10 @@ PR создан → [Ваш CI, если есть] → Patcher Review → ✅/�
 3. Или добавьте метку `ai-review` к существующему PR
 
 ---
-*Этот PR создан автоматически при установке [Patcher AI Agent](https://github.com/elpatcher/patcher)*
+*Этот PR создан автоматически при установке [ElPatcher AI Agent](https://github.com/elpatcher/elpatcher)*
 """
 
-COMMIT_MESSAGE = """Add Patcher AI Review workflow
+COMMIT_MESSAGE = """Add ElPatcher AI Review workflow
 
 This workflow enables automatic AI code review for Pull Requests.
 
@@ -96,7 +96,7 @@ def get_workflow_content() -> str:
         return WORKFLOW_TEMPLATE_PATH.read_text()
 
     # Fallback minimal workflow
-    return """name: Patcher AI Review
+    return """name: ElPatcher AI Review
 
 on:
   check_suite:
@@ -110,7 +110,7 @@ permissions:
   checks: read
 
 env:
-  PATCHER_API_URL: https://api.patcher.dev
+  ELPATCHER_API_URL: https://api.elpatcher.dev
 
 jobs:
   patcher-review:
@@ -121,7 +121,7 @@ jobs:
       github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Patcher AI Review
+      - name: ElPatcher AI Review
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -147,12 +147,12 @@ jobs:
             fi
           fi
 
-          if [[ "$LABELS" != *"ai-review"* ]] && [[ "$LABELS" != *"elpatcher"* ]] && [[ "$HEAD_REF" != patcher/* ]]; then
+          if [[ "$LABELS" != *"ai-review"* ]] && [[ "$LABELS" != *"elpatcher"* ]] && [[ "$HEAD_REF" != elpatcher/* ]]; then
             echo "No ai-review/elpatcher label, skipping"
             exit 0
           fi
 
-          response=$(curl -s -X POST "$PATCHER_API_URL/api/review" \\
+          response=$(curl -s -X POST "$ELPATCHER_API_URL/api/review" \\
             -H "Content-Type: application/json" \\
             -H "X-GitHub-Token: $GITHUB_TOKEN" \\
             -d "{\\"pr_number\\": $PR_NUMBER, \\"repo\\": \\"${{ github.repository }}\\"}")
@@ -260,7 +260,7 @@ async def create_onboarding_pr(
             body=PR_BODY,
             head=ONBOARDING_BRANCH,
             base=default_branch,
-            labels=["patcher", "onboarding"],
+            labels=["elpatcher", "onboarding"],
         )
 
         logger.info(f"Created onboarding PR: {pr.url}")

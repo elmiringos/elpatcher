@@ -104,6 +104,23 @@ async def review_pr(
         app_auth = get_github_app_auth()
         app_token = await app_auth.get_token_for_repo(request.repo)
 
+        # Check if this is onboarding PR - skip review
+        if app_token:
+            temp_client = GitHubClient(token=app_token, repo_name=request.repo)
+            pr = temp_client.get_pr(request.pr_number)
+            if pr.head_branch == "elpatcher/onboarding":
+                logger.info(f"Skipping review for onboarding PR #{request.pr_number}")
+                return ReviewResponse(
+                    status="success",
+                    approved=True,
+                    summary="Onboarding PR - auto-approved",
+                    review_body="## ✅ Welcome to ElPatcher!\n\nThis is the onboarding PR. Merge it to enable AI reviews.",
+                    comments=[],
+                    issues_count=0,
+                    errors_count=0,
+                    warnings_count=0,
+                )
+
         if app_token:
             github_client = GitHubClient(token=app_token, repo_name=request.repo)
             logger.info(f"Using GitHub App token for {request.repo}")
@@ -144,7 +161,7 @@ async def review_pr(
 {result.summary}
 
 ---
-@patcher fix - автоматически применить исправления
+@elpatcher fix - автоматически применить исправления
 """
 
         # Convert comments to response format
@@ -158,6 +175,9 @@ async def review_pr(
             f"Review analysis complete for PR #{request.pr_number}: "
             f"approved={result.approved}, errors={errors_count}, warnings={warnings_count}"
         )
+
+        # Review is posted by GitHub Actions workflow via `gh pr review`
+        # We only return the review data here
 
         return ReviewResponse(
             status="success",

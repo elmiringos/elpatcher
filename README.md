@@ -1,4 +1,4 @@
-# Patcher
+# ElPatcher
 
 AI-powered code agent for automated GitHub SDLC (Software Development Life Cycle).
 

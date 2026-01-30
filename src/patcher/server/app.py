@@ -27,11 +27,11 @@ logging.getLogger("github.GithubRetry").setLevel(logging.WARNING)
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     settings = get_settings()
-    logger.info(f"Starting Patcher webhook server on {settings.host}:{settings.port}")
+    logger.info(f"Starting ElPatcher webhook server on {settings.host}:{settings.port}")
     logger.info(f"GitHub App ID: {settings.github_app_id}")
     logger.info(f"LLM Provider: {settings.llm_provider}")
     yield
-    logger.info("Shutting down Patcher webhook server")
+    logger.info("Shutting down ElPatcher webhook server")
 
 
 def create_app() -> FastAPI:
@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="Patcher",
+        title="ElPatcher",
         description="GitHub App for automated code generation and review",
         version="0.1.0",
         lifespan=lifespan,
@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
     async def root():
         """Root endpoint with app info."""
         return {
-            "name": "Patcher",
+            "name": "ElPatcher",
             "version": "0.1.0",
             "description": "GitHub App for automated SDLC",
             "status": "running",

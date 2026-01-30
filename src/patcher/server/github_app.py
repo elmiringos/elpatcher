@@ -176,7 +176,7 @@ class GitHubAppAuth:
         )
         return {
             "app_id": self._app_id,
-            "name": "Patcher",
+            "name": "ElPatcher",
         }
 
 

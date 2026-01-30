@@ -266,7 +266,7 @@ class TestFastAPIApp:
             response = client.get("/")
 
             assert response.status_code == 200
-            assert response.json()["name"] == "Patcher"
+            assert response.json()["name"] == "ElPatcher"
             assert response.json()["status"] == "running"
 
     def test_health_endpoint(self):
